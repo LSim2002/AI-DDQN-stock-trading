@@ -1,0 +1,58 @@
+Hello Chris, 
+
+I am a student developer, and as I was reading your blog about DDQN's (https://towardsdatascience.com/double-deep-q-networks-905dd8325412) I came across your GitHub where I found your full implementation code of a DDQN (https://github.com/cyoon1729/deep-Q-networks/blob/master/doubleDQN/ddqn.py).
+
+I believe that within the compute_loss function in the DQNAgent class, you have calculated Qtarget using the classic DQN approach.
+Here is the code that I have written and that uses the Double DQN approach, where the main network is responsible for selecting the next action in the Qtarget calculation:
+
+
+    def compute_loss(self, batch):     
+        states, actions, rewards, next_states, dones = batch
+        states = torch.FloatTensor(states).to(self.device)
+        actions = torch.LongTensor(actions).to(self.device)
+        rewards = torch.FloatTensor(rewards).to(self.device)
+        next_states = torch.FloatTensor(next_states).to(self.device)
+        dones = torch.FloatTensor(dones)
+
+        # resize tensors
+        actions = actions.view(actions.size(0), 1)
+        dones = dones.view(dones.size(0), 1)
+
+        ########## compute loss   ###DDQN  ##########
+        
+        ##############
+        
+        #get main model's estimation for q values for every tuples in the batch
+        #ie Q(s,a,theta) for every tuple in batch
+        curr_Q_main = self.model.forward(states).gather(1, actions) 
+        
+        ##############
+        
+        ##now to find Qtarget for every tuple in the batch
+
+        # Get the best actions for the next states according to the main network
+        # ie argmax Q(s',a',θ) for a' for every tuple in batch
+        next_Q_main = self.model.forward(next_states)    
+        best_next_actions_main = torch.argmax(next_Q_main, dim=1, keepdim=True)
+
+
+        # Get the Q-value for the next state using the target network and best actions according to main network 
+        next_Q_target = self.target_model.forward(next_states)
+        next_Q_target_best_actions = next_Q_target.gather(1, best_next_actions_main)
+
+        # Compute the target Q-values using Double DQN formula for every tuple in batch
+        Q_target = rewards + (1 - dones) * self.gamma * next_Q_target_best_actions
+
+        ##############
+
+        #finally, now that we have Qtarget AND Q_main we can calculate the loss:
+        loss = F.mse_loss(curr_Q_main, Q_target.detach())    
+
+        return loss
+
+
+Please tell me what you think and don't hesitate to correct me if I've misunderstood anything. 
+
+Thank you for your time,
+
+Louis  
